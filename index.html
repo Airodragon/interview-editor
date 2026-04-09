@@ -306,6 +306,100 @@
             transition: opacity 0.3s ease;
         }
         
+        /* Console Output */
+        .console-output {
+            flex: 1;
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            font-family: 'JetBrains Mono', 'Consolas', 'Monaco', monospace;
+            font-size: 13px;
+            padding: 16px;
+            overflow-y: auto;
+            display: none;
+            line-height: 1.6;
+        }
+        
+        .console-output.show {
+            display: block;
+        }
+        
+        .console-line {
+            margin-bottom: 8px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            animation: fadeIn 0.2s ease-out;
+        }
+        
+        .console-line.log {
+            color: var(--text-primary);
+        }
+        
+        .console-line.error {
+            color: #ff6b6b;
+            background: rgba(218, 54, 51, 0.1);
+            border-left: 3px solid var(--danger);
+            padding-left: 12px;
+        }
+        
+        .console-line.warn {
+            color: #ffd93d;
+            background: rgba(255, 217, 61, 0.1);
+            border-left: 3px solid #ffd93d;
+            padding-left: 12px;
+        }
+        
+        .console-line.info {
+            color: #6bcbef;
+            background: rgba(107, 203, 239, 0.1);
+            border-left: 3px solid #6bcbef;
+            padding-left: 12px;
+        }
+        
+        .console-line.result {
+            color: #a8e6cf;
+            background: rgba(168, 230, 207, 0.1);
+            border-left: 3px solid #a8e6cf;
+            padding-left: 12px;
+            font-weight: 500;
+        }
+        
+        .console-line::before {
+            content: '> ';
+            color: var(--text-secondary);
+            margin-right: 8px;
+        }
+        
+        .console-clear-btn {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            padding: 6px 12px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-secondary);
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.2s;
+            z-index: 10;
+        }
+        
+        .console-clear-btn:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-5px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
         /* Loading Overlay */
         .preview-content::after {
             content: '';
@@ -443,6 +537,7 @@
         <div class="controls">
             <div class="mode-selector">
                 <button class="mode-btn active" id="html-btn">HTML/CSS/JS</button>
+                <button class="mode-btn" id="js-btn">JavaScript</button>
                 <button class="mode-btn" id="react-btn">React (JSX)</button>
             </div>
             <button class="action-btn run-btn" id="run-btn">Run Code</button>
@@ -459,9 +554,12 @@
         </div>
         
         <div class="preview-panel">
-            <div class="preview-header">Preview</div>
+            <div class="preview-header" id="preview-header">Preview</div>
             <div class="preview-content">
                 <iframe id="preview-frame" sandbox="allow-scripts"></iframe>
+                <div class="console-output" id="console-output">
+                    <button class="console-clear-btn" id="console-clear-btn">Clear Console</button>
+                </div>
                 <div class="error-panel" id="error-panel"></div>
             </div>
         </div>
@@ -492,6 +590,20 @@
     <\/script>
 </body>
 </html>`,
+            javascript: `// Write your JavaScript code here
+// Use console.log() to see output
+
+function fibonacci(n) {
+    if (n <= 1) return n;
+    return fibonacci(n - 1) + fibonacci(n - 2);
+}
+
+console.log('Fibonacci sequence:');
+for (let i = 0; i < 10; i++) {
+    console.log(\`fibonacci(\${i}) = \${fibonacci(i)}\`);
+}
+
+// Try solving your problem here!`,
             react: `function App() {
     const [count, setCount] = React.useState(0);
     
@@ -526,28 +638,62 @@ ReactDOM.render(<App />, document.getElementById('root'));`
         
         // Mode switching
         document.getElementById('html-btn').addEventListener('click', function() {
-            currentMode = 'html';
-            document.getElementById('html-btn').classList.add('active');
-            document.getElementById('react-btn').classList.remove('active');
-            document.getElementById('editor-mode-label').textContent = 'HTML/CSS/JS Editor';
-            editor.setOption('mode', 'htmlmixed');
-            if (editor.getValue().trim() === '' || editor.getValue() === templates.react) {
-                editor.setValue(templates.html);
-            }
-            hideError();
+            switchToMode('html');
+        });
+        
+        document.getElementById('js-btn').addEventListener('click', function() {
+            switchToMode('javascript');
         });
         
         document.getElementById('react-btn').addEventListener('click', function() {
-            currentMode = 'react';
-            document.getElementById('react-btn').classList.add('active');
-            document.getElementById('html-btn').classList.remove('active');
-            document.getElementById('editor-mode-label').textContent = 'React (JSX) Editor';
-            editor.setOption('mode', 'jsx');
-            if (editor.getValue().trim() === '' || editor.getValue() === templates.html) {
-                editor.setValue(templates.react);
-            }
-            hideError();
+            switchToMode('react');
         });
+        
+        function switchToMode(mode) {
+            currentMode = mode;
+            
+            // Update button states
+            document.getElementById('html-btn').classList.toggle('active', mode === 'html');
+            document.getElementById('js-btn').classList.toggle('active', mode === 'javascript');
+            document.getElementById('react-btn').classList.toggle('active', mode === 'react');
+            
+            // Update UI based on mode
+            const previewFrame = document.getElementById('preview-frame');
+            const consoleOutput = document.getElementById('console-output');
+            const previewHeader = document.getElementById('preview-header');
+            
+            if (mode === 'html') {
+                document.getElementById('editor-mode-label').textContent = 'HTML/CSS/JS Editor';
+                editor.setOption('mode', 'htmlmixed');
+                previewFrame.style.display = 'block';
+                consoleOutput.classList.remove('show');
+                previewHeader.textContent = 'Preview';
+                if (editor.getValue().trim() === '' || editor.getValue() === templates.react || editor.getValue() === templates.javascript) {
+                    editor.setValue(templates.html);
+                }
+            } else if (mode === 'javascript') {
+                document.getElementById('editor-mode-label').textContent = 'JavaScript Editor';
+                editor.setOption('mode', 'javascript');
+                previewFrame.style.display = 'none';
+                consoleOutput.classList.add('show');
+                previewHeader.textContent = 'Console Output';
+                if (editor.getValue().trim() === '' || editor.getValue() === templates.html || editor.getValue() === templates.react) {
+                    editor.setValue(templates.javascript);
+                }
+            } else if (mode === 'react') {
+                document.getElementById('editor-mode-label').textContent = 'React (JSX) Editor';
+                editor.setOption('mode', 'jsx');
+                previewFrame.style.display = 'block';
+                consoleOutput.classList.remove('show');
+                previewHeader.textContent = 'Preview';
+                if (editor.getValue().trim() === '' || editor.getValue() === templates.html || editor.getValue() === templates.javascript) {
+                    editor.setValue(templates.react);
+                }
+            }
+            
+            hideError();
+            clearConsole();
+        }
         
         // Run code
         document.getElementById('run-btn').addEventListener('click', runCode);
@@ -560,6 +706,10 @@ ReactDOM.render(<App />, document.getElementById('root'));`
             try {
                 if (currentMode === 'html') {
                     iframe.srcdoc = code;
+                } else if (currentMode === 'javascript') {
+                    // JavaScript mode - execute and capture console output
+                    clearConsole();
+                    executeJavaScript(code);
                 } else {
                     // React mode
                     let transformedCode;
@@ -600,6 +750,68 @@ ReactDOM.render(<App />, document.getElementById('root'));`
                 showError('Error: ' + error.message);
             }
         }
+        
+        // Execute JavaScript and capture output
+        function executeJavaScript(code) {
+            const consoleOutput = document.getElementById('console-output');
+            
+            // Create a custom console object
+            const customConsole = {
+                log: (...args) => addConsoleOutput('log', args),
+                error: (...args) => addConsoleOutput('error', args),
+                warn: (...args) => addConsoleOutput('warn', args),
+                info: (...args) => addConsoleOutput('info', args)
+            };
+            
+            try {
+                // Create a function with custom console
+                const func = new Function('console', code);
+                const result = func(customConsole);
+                
+                // Show return value if any
+                if (result !== undefined) {
+                    addConsoleOutput('result', ['Return value:', result]);
+                }
+            } catch (error) {
+                addConsoleOutput('error', [error.message]);
+                showError('JavaScript Error: ' + error.message);
+            }
+        }
+        
+        // Add output to console
+        function addConsoleOutput(type, args) {
+            const consoleOutput = document.getElementById('console-output');
+            const line = document.createElement('div');
+            line.className = `console-line ${type}`;
+            
+            // Format the output
+            const formatted = args.map(arg => {
+                if (typeof arg === 'object') {
+                    try {
+                        return JSON.stringify(arg, null, 2);
+                    } catch (e) {
+                        return String(arg);
+                    }
+                }
+                return String(arg);
+            }).join(' ');
+            
+            line.textContent = formatted;
+            consoleOutput.appendChild(line);
+            
+            // Auto-scroll to bottom
+            consoleOutput.scrollTop = consoleOutput.scrollHeight;
+        }
+        
+        // Clear console
+        function clearConsole() {
+            const consoleOutput = document.getElementById('console-output');
+            const lines = consoleOutput.querySelectorAll('.console-line');
+            lines.forEach(line => line.remove());
+        }
+        
+        // Console clear button
+        document.getElementById('console-clear-btn').addEventListener('click', clearConsole);
         
         // Clear
         document.getElementById('clear-btn').addEventListener('click', function() {
