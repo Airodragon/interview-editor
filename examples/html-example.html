@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        h1 {
+            color: #333;
+            margin-top: 0;
+        }
+        
+        .counter {
+            text-align: center;
+            margin: 30px 0;
+        }
+        
+        .count-display {
+            font-size: 72px;
+            font-weight: bold;
+            color: #667eea;
+            margin: 20px 0;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        button {
+            padding: 12px 24px;
+            font-size: 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 600;
+        }
+        
+        .btn-increment {
+            background: #667eea;
+            color: white;
+        }
+        
+        .btn-increment:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+        }
+        
+        .btn-decrement {
+            background: #f093fb;
+            color: white;
+        }
+        
+        .btn-decrement:hover {
+            background: #d87ae6;
+            transform: translateY(-2px);
+        }
+        
+        .btn-reset {
+            background: #4facfe;
+            color: white;
+        }
+        
+        .btn-reset:hover {
+            background: #3a93e5;
+            transform: translateY(-2px);
+        }
+        
+        .info {
+            margin-top: 30px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .info p {
+            margin: 5px 0;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>Interactive Counter</h1>
+        <p>A simple example demonstrating HTML, CSS, and JavaScript.</p>
+        
+        <div class="counter">
+            <div class="count-display" id="count">0</div>
+            <div class="button-group">
+                <button class="btn-increment" onclick="increment()">
+                    + Increment
+                </button>
+                <button class="btn-decrement" onclick="decrement()">
+                    - Decrement
+                </button>
+                <button class="btn-reset" onclick="reset()">
+                    Reset
+                </button>
+            </div>
+        </div>
+        
+        <div class="info">
+            <p><strong>Instructions:</strong></p>
+            <p>• Click "Increment" to add 1</p>
+            <p>• Click "Decrement" to subtract 1</p>
+            <p>• Click "Reset" to return to 0</p>
+        </div>
+    </div>
+    
+    <script>
+        let count = 0;
+        const countDisplay = document.getElementById('count');
+        
+        function updateDisplay() {
+            countDisplay.textContent = count;
+            
+            // Add color based on value
+            if (count > 0) {
+                countDisplay.style.color = '#667eea';
+            } else if (count < 0) {
+                countDisplay.style.color = '#f093fb';
+            } else {
+                countDisplay.style.color = '#4facfe';
+            }
+        }
+        
+        function increment() {
+            count++;
+            updateDisplay();
+        }
+        
+        function decrement() {
+            count--;
+            updateDisplay();
+        }
+        
+        function reset() {
+            count = 0;
+            updateDisplay();
+        }
+        
+        // Initialize
+        updateDisplay();
+        
+        console.log('Counter initialized!');
+    </script>
+</body>
+</html>
