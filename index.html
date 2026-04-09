@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interview Code Editor</title>
+    
+    <!-- CodeMirror CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/theme/monokai.min.css">
+    
+    <!-- CodeMirror JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/htmlmixed/htmlmixed.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/javascript/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/css/css.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/xml/xml.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/jsx/jsx.min.js"></script>
+    
+    <!-- Babel Standalone -->
+    <script src="https://unpkg.com/@babel/standalone@7.23.5/babel.min.js"></script>
+    
+    <!-- React -->
+    <script crossorigin src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        :root {
+            --bg-primary: #0d1117;
+            --bg-secondary: #161b22;
+            --bg-tertiary: #21262d;
+            --border-color: #30363d;
+            --text-primary: #e6edf3;
+            --text-secondary: #8b949e;
+            --accent-primary: #238636;
+            --accent-hover: #2ea043;
+            --accent-secondary: #1f6feb;
+            --accent-secondary-hover: #388bfd;
+            --danger: #da3633;
+            --danger-hover: #f85149;
+            --warning-bg: #3d2b00;
+            --warning-text: #f0c36d;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
+            height: 100vh;
+            overflow: hidden;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+        }
+        
+        /* Warning Banner */
+        .warning-banner {
+            background: linear-gradient(135deg, var(--warning-bg) 0%, #4a3300 100%);
+            color: var(--warning-text);
+            padding: 12px 24px;
+            text-align: center;
+            font-size: 13px;
+            border-bottom: 1px solid rgba(240, 195, 109, 0.2);
+            backdrop-filter: blur(10px);
+            animation: slideDown 0.3s ease-out;
+        }
+        
+        .warning-banner strong {
+            font-weight: 600;
+            color: #ffd700;
+        }
+        
+        /* Header */
+        .header {
+            background: var(--bg-secondary);
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+        }
+        
+        .header h1 {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text-primary);
+            letter-spacing: -0.5px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .header h1::before {
+            content: '⚡';
+            font-size: 24px;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+        
+        /* Mode Selector */
+        .mode-selector {
+            display: flex;
+            gap: 0;
+            background: var(--bg-tertiary);
+            padding: 4px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3);
+        }
+        
+        .mode-btn {
+            padding: 8px 18px;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+        }
+        
+        .mode-btn:hover:not(.active) {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-primary);
+        }
+        
+        .mode-btn.active {
+            background: var(--accent-secondary);
+            color: white;
+            box-shadow: 0 2px 8px rgba(31, 111, 235, 0.3);
+            transform: translateY(-1px);
+        }
+        
+        /* Action Buttons */
+        .action-btn {
+            padding: 9px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .action-btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+        
+        .action-btn:active::before {
+            width: 300px;
+            height: 300px;
+        }
+        
+        .run-btn {
+            background: linear-gradient(135deg, var(--accent-primary) 0%, #2ea043 100%);
+            color: white;
+        }
+        
+        .run-btn:hover {
+            background: linear-gradient(135deg, var(--accent-hover) 0%, #3fb950 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(35, 134, 54, 0.4);
+        }
+        
+        .run-btn:active {
+            transform: translateY(0);
+        }
+        
+        .clear-btn {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+        
+        .clear-btn:hover {
+            background: var(--danger);
+            border-color: var(--danger);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(218, 54, 51, 0.3);
+        }
+        
+        .clear-btn:active {
+            transform: translateY(0);
+        }
+        
+        /* Container */
+        .container {
+            display: flex;
+            height: calc(100vh - 105px);
+            background: var(--bg-primary);
+        }
+        
+        /* Editor Panel */
+        .editor-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid var(--border-color);
+            background: var(--bg-secondary);
+            animation: slideInLeft 0.4s ease-out;
+        }
+        
+        .editor-header {
+            background: var(--bg-tertiary);
+            padding: 10px 16px;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 12px;
+            color: var(--text-secondary);
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .editor-header::before {
+            content: '📝';
+            font-size: 14px;
+        }
+        
+        #editor {
+            flex: 1;
+            overflow: hidden;
+        }
+        
+        .CodeMirror {
+            height: 100% !important;
+            font-size: 14px;
+            font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', 'Monaco', monospace;
+            line-height: 1.6;
+        }
+        
+        .CodeMirror-gutters {
+            background: var(--bg-tertiary) !important;
+            border-right: 1px solid var(--border-color) !important;
+        }
+        
+        .CodeMirror-linenumber {
+            color: var(--text-secondary) !important;
+        }
+        
+        /* Preview Panel */
+        .preview-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: var(--bg-secondary);
+            animation: slideInRight 0.4s ease-out;
+        }
+        
+        .preview-header {
+            background: var(--bg-tertiary);
+            padding: 10px 16px;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 12px;
+            color: var(--text-secondary);
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .preview-header::before {
+            content: '🖥️';
+            font-size: 14px;
+        }
+        
+        .preview-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        #preview-frame {
+            flex: 1;
+            border: none;
+            background: white;
+            width: 100%;
+            transition: opacity 0.3s ease;
+        }
+        
+        /* Loading Overlay */
+        .preview-content::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: var(--bg-secondary);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        
+        .preview-content.loading::after {
+            opacity: 0.8;
+        }
+        
+        /* Error Panel */
+        .error-panel {
+            background: linear-gradient(135deg, #2d0a0a 0%, #3d1010 100%);
+            border-top: 2px solid var(--danger);
+            padding: 14px 18px;
+            color: #ff6b6b;
+            font-family: 'JetBrains Mono', 'Consolas', 'Monaco', monospace;
+            font-size: 12px;
+            max-height: 150px;
+            overflow-y: auto;
+            display: none;
+            animation: slideUp 0.3s ease-out;
+            box-shadow: 0 -2px 10px rgba(218, 54, 51, 0.2);
+        }
+        
+        .error-panel.show {
+            display: block;
+        }
+        
+        .error-panel::before {
+            content: '⚠️ ';
+            font-size: 14px;
+            margin-right: 6px;
+        }
+        
+        /* Scrollbar Styling */
+        ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: var(--bg-tertiary);
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 5px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: #484f58;
+        }
+        
+        /* Animations */
+        @keyframes slideDown {
+            from {
+                transform: translateY(-100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+        
+        @keyframes slideUp {
+            from {
+                transform: translateY(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+        
+        @keyframes slideInLeft {
+            from {
+                transform: translateX(-20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        @keyframes slideInRight {
+            from {
+                transform: translateX(20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+            
+            .editor-panel {
+                border-right: none;
+                border-bottom: 1px solid var(--border-color);
+            }
+            
+            .header {
+                flex-direction: column;
+                gap: 12px;
+                padding: 12px 16px;
+            }
+            
+            .controls {
+                width: 100%;
+                justify-content: space-between;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Interview Code Editor</h1>
+        <div class="controls">
+            <div class="mode-selector">
+                <button class="mode-btn active" id="html-btn">HTML/CSS/JS</button>
+                <button class="mode-btn" id="react-btn">React (JSX)</button>
+            </div>
+            <button class="action-btn run-btn" id="run-btn">Run Code</button>
+            <button class="action-btn clear-btn" id="clear-btn">Clear</button>
+        </div>
+    </div>
+    
+    <div class="container">
+        <div class="editor-panel">
+            <div class="editor-header">
+                <span id="editor-mode-label">HTML/CSS/JS Editor</span>
+            </div>
+            <textarea id="editor"></textarea>
+        </div>
+        
+        <div class="preview-panel">
+            <div class="preview-header">Preview</div>
+            <div class="preview-content">
+                <iframe id="preview-frame" sandbox="allow-scripts"></iframe>
+                <div class="error-panel" id="error-panel"></div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Templates
+        const templates = {
+            html: `<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        h1 {
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <h1>Hello, World!</h1>
+    <p>Start coding your HTML/CSS/JS here.</p>
+    
+    <script>
+        console.log('Ready to code!');
+    <\/script>
+</body>
+</html>`,
+            react: `function App() {
+    const [count, setCount] = React.useState(0);
+    
+    return (
+        <div style={{ padding: '20px', fontFamily: 'Arial' }}>
+            <h1>React Counter</h1>
+            <p>Count: {count}</p>
+            <button onClick={() => setCount(count + 1)}>
+                Increment
+            </button>
+        </div>
+    );
+}
+
+ReactDOM.render(<App />, document.getElementById('root'));`
+        };
+        
+        // Initialize CodeMirror
+        const editor = CodeMirror.fromTextArea(document.getElementById('editor'), {
+            mode: 'htmlmixed',
+            theme: 'monokai',
+            lineNumbers: true,
+            tabSize: 2,
+            indentWithTabs: false,
+            lineWrapping: true,
+            autofocus: true
+        });
+        
+        editor.setValue(templates.html);
+        
+        let currentMode = 'html';
+        
+        // Mode switching
+        document.getElementById('html-btn').addEventListener('click', function() {
+            currentMode = 'html';
+            document.getElementById('html-btn').classList.add('active');
+            document.getElementById('react-btn').classList.remove('active');
+            document.getElementById('editor-mode-label').textContent = 'HTML/CSS/JS Editor';
+            editor.setOption('mode', 'htmlmixed');
+            if (editor.getValue().trim() === '' || editor.getValue() === templates.react) {
+                editor.setValue(templates.html);
+            }
+            hideError();
+        });
+        
+        document.getElementById('react-btn').addEventListener('click', function() {
+            currentMode = 'react';
+            document.getElementById('react-btn').classList.add('active');
+            document.getElementById('html-btn').classList.remove('active');
+            document.getElementById('editor-mode-label').textContent = 'React (JSX) Editor';
+            editor.setOption('mode', 'jsx');
+            if (editor.getValue().trim() === '' || editor.getValue() === templates.html) {
+                editor.setValue(templates.react);
+            }
+            hideError();
+        });
+        
+        // Run code
+        document.getElementById('run-btn').addEventListener('click', runCode);
+        
+        function runCode() {
+            hideError();
+            const code = editor.getValue();
+            const iframe = document.getElementById('preview-frame');
+            
+            try {
+                if (currentMode === 'html') {
+                    iframe.srcdoc = code;
+                } else {
+                    // React mode
+                    let transformedCode;
+                    try {
+                        transformedCode = Babel.transform(code, {
+                            presets: ['react']
+                        }).code;
+                    } catch (err) {
+                        showError('JSX Error: ' + err.message);
+                        return;
+                    }
+                    
+                    const reactHTML = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <script crossorigin src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"><\/script>
+    <script crossorigin src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js"><\/script>
+    <style>
+        body { margin: 0; padding: 0; font-family: Arial, sans-serif; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    <script>
+        try {
+            ${transformedCode}
+        } catch (error) {
+            document.body.innerHTML = '<div style="padding: 20px; color: red;"><strong>Error:</strong> ' + error.message + '</div>';
+        }
+    <\/script>
+</body>
+</html>`;
+                    
+                    iframe.srcdoc = reactHTML;
+                }
+            } catch (error) {
+                showError('Error: ' + error.message);
+            }
+        }
+        
+        // Clear
+        document.getElementById('clear-btn').addEventListener('click', function() {
+            if (confirm('Clear editor and reset to template?')) {
+                editor.setValue(templates[currentMode]);
+                document.getElementById('preview-frame').srcdoc = '';
+                hideError();
+            }
+        });
+        
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            // Run on Ctrl+Enter
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                e.preventDefault();
+                runCode();
+                return;
+            }
+            
+            // Block copy/paste/cut
+            if ((e.ctrlKey || e.metaKey) && !e.shiftKey) {
+                if (e.key === 'c' || e.key === 'C') {
+                    e.preventDefault();
+                    showError('Copy is disabled in interview mode');
+                    return;
+                }
+                if (e.key === 'v' || e.key === 'V') {
+                    e.preventDefault();
+                    showError('Paste is disabled in interview mode');
+                    return;
+                }
+                if (e.key === 'x' || e.key === 'X') {
+                    e.preventDefault();
+                    showError('Cut is disabled in interview mode');
+                    return;
+                }
+            }
+            
+            // Block DevTools
+            if (e.key === 'F12' || 
+                (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'i' || e.key === 'J' || e.key === 'j' || e.key === 'C' || e.key === 'c')) ||
+                (e.metaKey && e.altKey && (e.key === 'I' || e.key === 'i' || e.key === 'J' || e.key === 'j' || e.key === 'C' || e.key === 'c'))) {
+                e.preventDefault();
+                showError('DevTools are disabled in interview mode');
+                return;
+            }
+        });
+        
+        // Block right-click
+        document.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+            showError('Right-click is disabled in interview mode');
+        });
+        
+        // Block clipboard events
+        document.addEventListener('copy', function(e) {
+            e.preventDefault();
+            showError('Copy is disabled in interview mode');
+        });
+        
+        document.addEventListener('cut', function(e) {
+            e.preventDefault();
+            showError('Cut is disabled in interview mode');
+        });
+        
+        document.addEventListener('paste', function(e) {
+            e.preventDefault();
+            showError('Paste is disabled in interview mode');
+        });
+        
+        // Error handling
+        function showError(message) {
+            const panel = document.getElementById('error-panel');
+            panel.textContent = message;
+            panel.classList.add('show');
+            setTimeout(hideError, 3000);
+        }
+        
+        function hideError() {
+            document.getElementById('error-panel').classList.remove('show');
+        }
+        
+        // Auto-run on load
+        setTimeout(function() {
+            runCode();
+        }, 500);
+    </script>
+</body>
+</html>

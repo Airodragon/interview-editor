@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interview Code Editor</title>
+    
+    <!-- Monaco Editor -->
+    <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.js"></script>
+    
+    <!-- Babel Standalone for JSX transformation -->
+    <script src="https://unpkg.com/@babel/standalone@7.23.5/babel.min.js"></script>
+    
+    <!-- React and ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            height: 100vh;
+            overflow: hidden;
+            background: #1e1e1e;
+            color: #d4d4d4;
+        }
+        
+        .header {
+            background: #252526;
+            padding: 12px 20px;
+            border-bottom: 1px solid #3e3e42;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 15px;
+        }
+        
+        .header h1 {
+            font-size: 18px;
+            font-weight: 600;
+            color: #cccccc;
+            margin: 0;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .mode-selector {
+            display: flex;
+            gap: 5px;
+            background: #3c3c3c;
+            padding: 4px;
+            border-radius: 6px;
+        }
+        
+        .mode-btn {
+            padding: 8px 16px;
+            border: none;
+            background: transparent;
+            color: #cccccc;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        
+        .mode-btn:hover {
+            background: #505050;
+        }
+        
+        .mode-btn.active {
+            background: #0e639c;
+            color: #ffffff;
+        }
+        
+        .action-btn {
+            padding: 8px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .run-btn {
+            background: #0e639c;
+            color: #ffffff;
+        }
+        
+        .run-btn:hover {
+            background: #1177bb;
+        }
+        
+        .clear-btn {
+            background: #3c3c3c;
+            color: #cccccc;
+        }
+        
+        .clear-btn:hover {
+            background: #505050;
+        }
+        
+        .container {
+            display: flex;
+            height: calc(100vh - 50px);
+        }
+        
+        .editor-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid #3e3e42;
+        }
+        
+        .editor-header {
+            background: #2d2d30;
+            padding: 8px 15px;
+            border-bottom: 1px solid #3e3e42;
+            font-size: 12px;
+            color: #cccccc;
+        }
+        
+        #editor-container {
+            flex: 1;
+            overflow: hidden;
+        }
+        
+        .preview-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #1e1e1e;
+        }
+        
+        .preview-header {
+            background: #2d2d30;
+            padding: 8px 15px;
+            border-bottom: 1px solid #3e3e42;
+            font-size: 12px;
+            color: #cccccc;
+        }
+        
+        .preview-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        #preview-frame {
+            flex: 1;
+            border: none;
+            background: white;
+            width: 100%;
+            height: 100%;
+        }
+        
+        .error-panel {
+            background: #3c1f1e;
+            border-top: 2px solid #f48771;
+            padding: 12px 15px;
+            color: #f48771;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 12px;
+            max-height: 150px;
+            overflow-y: auto;
+            display: none;
+        }
+        
+        .error-panel.show {
+            display: block;
+        }
+        
+        .error-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .warning-banner {
+            background: #635c00;
+            color: #f0e68c;
+            padding: 10px 20px;
+            text-align: center;
+            font-size: 12px;
+            border-bottom: 1px solid #8b7500;
+        }
+        
+        .warning-banner strong {
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="warning-banner">
+        <strong>Interview Mode Active:</strong> Copy/Paste, Right-Click, and DevTools are disabled for integrity purposes.
+    </div>
+    
+    <div class="header">
+        <h1>Interview Code Editor</h1>
+        <div class="controls">
+            <div class="mode-selector">
+                <button class="mode-btn active" data-mode="html">HTML/CSS/JS</button>
+                <button class="mode-btn" data-mode="react">React (JSX)</button>
+            </div>
+            <button class="action-btn run-btn" id="run-btn">Run Code</button>
+            <button class="action-btn clear-btn" id="clear-btn">Clear</button>
+        </div>
+    </div>
+    
+    <div class="container">
+        <div class="editor-panel">
+            <div class="editor-header">
+                <span id="editor-mode-label">HTML/CSS/JS Editor</span>
+            </div>
+            <div id="editor-container"></div>
+        </div>
+        
+        <div class="preview-panel">
+            <div class="preview-header">Preview</div>
+            <div class="preview-content">
+                <iframe id="preview-frame" sandbox="allow-scripts"></iframe>
+                <div class="error-panel" id="error-panel">
+                    <div class="error-title">Error:</div>
+                    <div id="error-message"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let editor;
+        let currentMode = 'html';
+        
+        // Default code templates - using string concatenation to avoid template literal issues
+        const templates = {
+            html: '<!DOCTYPE html>\n' +
+                '<html>\n' +
+                '<head>\n' +
+                '    <style>\n' +
+                '        body {\n' +
+                '            font-family: Arial, sans-serif;\n' +
+                '            padding: 20px;\n' +
+                '        }\n' +
+                '        h1 {\n' +
+                '            color: #333;\n' +
+                '        }\n' +
+                '    </style>\n' +
+                '</head>\n' +
+                '<body>\n' +
+                '    <h1>Hello, World!</h1>\n' +
+                '    <p>Start coding your HTML/CSS/JS here.</p>\n' +
+                '    \n' +
+                '    <script>\n' +
+                '        console.log(\'Ready to code!\');\n' +
+                '    <\/script>\n' +
+                '</body>\n' +
+                '</html>',
+            react: 'function App() {\n' +
+                '    const [count, setCount] = React.useState(0);\n' +
+                '    \n' +
+                '    return (\n' +
+                '        <div style={{ padding: \'20px\', fontFamily: \'Arial, sans-serif\' }}>\n' +
+                '            <h1>React Counter</h1>\n' +
+                '            <p>Count: {count}</p>\n' +
+                '            <button onClick={() => setCount(count + 1)}>\n' +
+                '                Increment\n' +
+                '            </button>\n' +
+                '        </div>\n' +
+                '    );\n' +
+                '}\n' +
+                '\n' +
+                'ReactDOM.render(<App />, document.getElementById(\'root\'));'
+        };
+        
+        // Initialize Monaco Editor
+        require.config({ 
+            paths: { 
+                vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs' 
+            } 
+        });
+        
+        require(['vs/editor/editor.main'], function() {
+            editor = monaco.editor.create(document.getElementById('editor-container'), {
+                value: templates.html,
+                language: 'html',
+                theme: 'vs-dark',
+                automaticLayout: true,
+                
+                // Disable all autocomplete and assistance features
+                quickSuggestions: false,
+                suggestOnTriggerCharacters: false,
+                acceptSuggestionOnCommitCharacter: false,
+                acceptSuggestionOnEnter: 'off',
+                wordBasedSuggestions: false,
+                parameterHints: { enabled: false },
+                suggest: {
+                    enabled: false,
+                    showWords: false,
+                    showSnippets: false
+                },
+                
+                // Disable auto-closing features
+                autoClosingBrackets: 'never',
+                autoClosingQuotes: 'never',
+                autoClosingOvertype: 'never',
+                autoSurround: 'never',
+                
+                // Disable other helper features
+                codeLens: false,
+                colorDecorators: false,
+                contextmenu: false,
+                links: false,
+                minimap: { enabled: false },
+                folding: false,
+                foldingHighlight: false,
+                occurrencesHighlight: false,
+                selectionHighlight: false,
+                renderLineHighlight: 'none',
+                
+                // Basic editing features
+                fontSize: 14,
+                lineNumbers: 'on',
+                scrollBeyondLastLine: false,
+                wordWrap: 'on',
+                tabSize: 2
+            });
+            
+            // Initialize security features after editor is ready
+            initializeSecurity();
+            
+            // Setup mode switching after editor is ready
+            setupModeSwitch();
+            
+            // Setup run and clear buttons
+            setupButtons();
+        });
+        
+        // Setup mode switching
+        function setupModeSwitch() {
+            document.querySelectorAll('.mode-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const mode = btn.dataset.mode;
+                    switchMode(mode);
+                });
+            });
+        }
+        
+        // Setup run and clear buttons
+        function setupButtons() {
+            // Run code
+            document.getElementById('run-btn').addEventListener('click', () => {
+                runCode();
+            });
+            
+            // Clear editor
+            document.getElementById('clear-btn').addEventListener('click', () => {
+                if (confirm('Are you sure you want to clear the editor and reset to the template?')) {
+                    editor.setValue(templates[currentMode]);
+                    document.getElementById('preview-frame').srcdoc = '';
+                    hideError();
+                }
+            });
+            
+            // Run code on Ctrl+Enter
+            document.addEventListener('keydown', (e) => {
+                if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                    e.preventDefault();
+                    runCode();
+                }
+            });
+        }
+        
+        // Security: Block copy/paste/cut
+        function initializeSecurity() {
+            // Block clipboard events on the entire document
+            const blockClipboard = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                showError('Clipboard operations are disabled in interview mode.');
+                setTimeout(hideError, 3000);
+                return false;
+            };
+            
+            // Use capture phase to intercept before Monaco
+            document.addEventListener('copy', blockClipboard, true);
+            document.addEventListener('cut', blockClipboard, true);
+            document.addEventListener('paste', blockClipboard, true);
+            
+            // Block right-click context menu
+            document.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                showError('Right-click is disabled in interview mode.');
+                setTimeout(hideError, 3000);
+                return false;
+            });
+            
+            // Block DevTools shortcuts and copy/paste keyboard shortcuts
+            document.addEventListener('keydown', (e) => {
+                // Block copy/paste/cut keyboard shortcuts
+                if ((e.ctrlKey || e.metaKey) && (e.key === 'c' || e.key === 'C') && !e.shiftKey) {
+                    e.preventDefault();
+                    showError('Copy is disabled in interview mode.');
+                    setTimeout(hideError, 3000);
+                    return false;
+                }
+                
+                if ((e.ctrlKey || e.metaKey) && (e.key === 'v' || e.key === 'V')) {
+                    e.preventDefault();
+                    showError('Paste is disabled in interview mode.');
+                    setTimeout(hideError, 3000);
+                    return false;
+                }
+                
+                if ((e.ctrlKey || e.metaKey) && (e.key === 'x' || e.key === 'X')) {
+                    e.preventDefault();
+                    showError('Cut is disabled in interview mode.');
+                    setTimeout(hideError, 3000);
+                    return false;
+                }
+                
+                // F12
+                if (e.key === 'F12') {
+                    e.preventDefault();
+                    showError('DevTools shortcuts are disabled in interview mode.');
+                    setTimeout(hideError, 3000);
+                    return false;
+                }
+                
+                // Ctrl+Shift+I (DevTools)
+                if (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'i')) {
+                    e.preventDefault();
+                    showError('DevTools shortcuts are disabled in interview mode.');
+                    setTimeout(hideError, 3000);
+                    return false;
+                }
+                
+                // Ctrl+Shift+J (Console)
+                if (e.ctrlKey && e.shiftKey && (e.key === 'J' || e.key === 'j')) {
+                    e.preventDefault();
+                    showError('DevTools shortcuts are disabled in interview mode.');
+                    setTimeout(hideError, 3000);
+                    return false;
+                }
+                
+                // Ctrl+Shift+C (Inspect) - only when Shift is pressed
+                if (e.ctrlKey && e.shiftKey && (e.key === 'C' || e.key === 'c')) {
+                    e.preventDefault();
+                    showError('DevTools shortcuts are disabled in interview mode.');
+                    setTimeout(hideError, 3000);
+                    return false;
+                }
+                
+                // Ctrl+U (View Source)
+                if (e.ctrlKey && (e.key === 'u' || e.key === 'U')) {
+                    e.preventDefault();
+                    showError('View source is disabled in interview mode.');
+                    setTimeout(hideError, 3000);
+                    return false;
+                }
+                
+                // Cmd+Option+I (Mac DevTools)
+                if (e.metaKey && e.altKey && (e.key === 'i' || e.key === 'I')) {
+                    e.preventDefault();
+                    showError('DevTools shortcuts are disabled in interview mode.');
+                    setTimeout(hideError, 3000);
+                    return false;
+                }
+                
+                // Cmd+Option+J (Mac Console)
+                if (e.metaKey && e.altKey && (e.key === 'j' || e.key === 'J')) {
+                    e.preventDefault();
+                    showError('DevTools shortcuts are disabled in interview mode.');
+                    setTimeout(hideError, 3000);
+                    return false;
+                }
+                
+                // Cmd+Option+C (Mac Inspect)
+                if (e.metaKey && e.altKey && (e.key === 'c' || e.key === 'C')) {
+                    e.preventDefault();
+                    showError('DevTools shortcuts are disabled in interview mode.');
+                    setTimeout(hideError, 3000);
+                    return false;
+                }
+            });
+            
+            // Additional security: detect if DevTools is open (basic detection)
+            let devtoolsOpen = false;
+            const detectDevTools = () => {
+                const threshold = 160;
+                if (window.outerWidth - window.innerWidth > threshold || 
+                    window.outerHeight - window.innerHeight > threshold) {
+                    if (!devtoolsOpen) {
+                        devtoolsOpen = true;
+                        showError('Warning: DevTools may be open. Please close them for interview integrity.');
+                    }
+                } else {
+                    devtoolsOpen = false;
+                }
+            };
+            
+            setInterval(detectDevTools, 1000);
+        }
+        
+        // Mode switching function
+        function switchMode(mode) {
+            currentMode = mode;
+            
+            // Update active button
+            document.querySelectorAll('.mode-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.mode === mode);
+            });
+            
+            // Update editor language and content
+            if (mode === 'html') {
+                monaco.editor.setModelLanguage(editor.getModel(), 'html');
+                document.getElementById('editor-mode-label').textContent = 'HTML/CSS/JS Editor';
+                if (editor.getValue().trim() === '' || editor.getValue() === templates.react) {
+                    editor.setValue(templates.html);
+                }
+            } else {
+                monaco.editor.setModelLanguage(editor.getModel(), 'javascript');
+                document.getElementById('editor-mode-label').textContent = 'React (JSX) Editor';
+                if (editor.getValue().trim() === '' || editor.getValue() === templates.html) {
+                    editor.setValue(templates.react);
+                }
+            }
+            
+            hideError();
+        }
+        
+        // Run code function
+        function runCode() {
+            hideError();
+            const code = editor.getValue();
+            const iframe = document.getElementById('preview-frame');
+            
+            try {
+                if (currentMode === 'html') {
+                    // HTML/CSS/JS mode - direct injection
+                    iframe.srcdoc = code;
+                } else {
+                    // React mode - transform JSX with Babel
+                    let transformedCode;
+                    try {
+                        transformedCode = Babel.transform(code, {
+                            presets: ['react'],
+                            filename: 'code.jsx'
+                        }).code;
+                    } catch (babelError) {
+                        showError('JSX Transformation Error: ' + babelError.message);
+                        return;
+                    }
+                    
+                    // Create HTML document with React
+                    const reactHTML = '<!DOCTYPE html>\n' +
+                        '<html>\n' +
+                        '<head>\n' +
+                        '    <meta charset="UTF-8">\n' +
+                        '    <script crossorigin src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"><\/script>\n' +
+                        '    <script crossorigin src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js"><\/script>\n' +
+                        '    <style>\n' +
+                        '        body {\n' +
+                        '            margin: 0;\n' +
+                        '            padding: 0;\n' +
+                        '            font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;\n' +
+                        '        }\n' +
+                        '    </style>\n' +
+                        '</head>\n' +
+                        '<body>\n' +
+                        '    <div id="root"></div>\n' +
+                        '    <script>\n' +
+                        '        try {\n' +
+                        '            ' + transformedCode + '\n' +
+                        '        } catch (error) {\n' +
+                        '            document.body.innerHTML = \'<div style="padding: 20px; color: red; font-family: monospace;"><strong>Runtime Error:</strong><br>\' + error.message + \'</div>\';\n' +
+                        '            console.error(error);\n' +
+                        '        }\n' +
+                        '    <\/script>\n' +
+                        '</body>\n' +
+                        '</html>';
+                    
+                    iframe.srcdoc = reactHTML;
+                }
+            } catch (error) {
+                showError('Execution Error: ' + error.message);
+            }
+        }
+        
+        // Error handling
+        function showError(message) {
+            const errorPanel = document.getElementById('error-panel');
+            const errorMessage = document.getElementById('error-message');
+            errorMessage.textContent = message;
+            errorPanel.classList.add('show');
+        }
+        
+        function hideError() {
+            document.getElementById('error-panel').classList.remove('show');
+        }
+        
+        // Capture iframe errors
+        window.addEventListener('message', (event) => {
+            if (event.data && event.data.type === 'error') {
+                showError('Runtime Error: ' + event.data.message);
+            }
+        });
+    </script>
+</body>
+</html>
